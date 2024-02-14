@@ -504,3 +504,21 @@ body {
   display: none;
   margin-top: 5px;
 }
+
+.custom-dropdown .Dropdown-control {
+  border-color: rgb(10, 90, 10);
+  background-color: rgba(200, 250, 200, 0.4);
+  border-radius: 5px;
+  color: rgb(10, 90, 10);
+  padding: 5px;
+}
+
+.custom-dropdown .Dropdown-menu {
+  background-color: rgba(200, 250, 200, 0.4);
+  border-radius: 5px;
+  color: rgb(10, 90, 10);
+}
+
+.custom-dropdown .Dropdown-option {
+  color: rgb(10, 90, 10);
+}

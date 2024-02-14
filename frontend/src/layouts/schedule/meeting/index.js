@@ -2,6 +2,8 @@
  * Source for the Meeting component. This component consists mostly of
  * a very large meeting form, which is used to create/edit meetings.
  */
+import Dropdown from 'react-dropdown';
+import 'react-dropdown/style.css';
 import {
   React,
   useState,
@@ -40,6 +42,8 @@ import AppSidebar from "../../../components/appSidebar";
 import InvitePeopleModal from "../../../components/modals/InvitePeopleModal.js";
 
 const Meeting = (props) => {
+  const [taskDropdownOptions,setTaskDropdownOptions] = useState(['other']);
+  const [selectedTaskDropdownOption,setSelectedTaskDropdownOption] = useState([]);
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [agenda, setAgenda] = useState("");
@@ -83,6 +87,7 @@ const Meeting = (props) => {
     false,
     false
   ]);
+  const [tasks, setTasks] = useState([]);
   const [typeStrings, setTypeStrings] = useState([
     "1 on 1",
     "Delegation",
@@ -104,6 +109,27 @@ const Meeting = (props) => {
   const imageRef = useRef(null);
 
   useEffect(() => {
+        tasks_view()
+            .then((req) => {
+                const task = req.data.results;
+                setTasks(task);
+                let taskObj=taskDropdownOptions.slice();
+                  task.forEach(x => {
+                    taskObj.push(x.task_name);
+                  });
+                setTaskDropdownOptions(taskObj);
+            })
+            .catch((error) => {
+                console.log(error);
+            });
+            
+            
+      
+             
+}, []);
+  useEffect(() => {
+   
+    
     if (state.clearForm) {
       setId('');
       handleClearForm();
@@ -192,6 +218,7 @@ const Meeting = (props) => {
       false,
       false
     ];
+
     updatedTypeSync[value] = true;
     setTypeSync(updatedTypeSync);
     setType(typeStrings[value]);
@@ -220,6 +247,52 @@ const Meeting = (props) => {
     errorElement.innerText = errorMessage;
     errorElement.style.display = 'block';
   }
+
+  const OnTaskOptionChange=(dropdownValue,dropDownSelectedIndex,taskIndex)=>{
+    console.log(dropdownValue)
+    if(dropdownValue.value!='other'){
+      let substituteMeetingTasks=meetingTasks.slice();
+      const meetingTask = {
+      task_name: tasks[dropDownSelectedIndex-1].task_name,
+      employee_name: tasks[dropDownSelectedIndex-1].employee_name,
+      start_date: tasks[dropDownSelectedIndex-1].start_date,
+      end_date: tasks[dropDownSelectedIndex-1].end_date,
+      task_description: tasks[dropDownSelectedIndex-1].task_description,
+      priority: tasks[dropDownSelectedIndex-1].priority,
+      meeting_id: tasks[dropDownSelectedIndex-1].meeting_id,
+    }
+    substituteMeetingTasks[taskIndex]=meetingTask;
+    setMeetingTasks(substituteMeetingTasks)
+    
+
+    let updatedselectedTaskDropdownOption=selectedTaskDropdownOption.slice();
+    updatedselectedTaskDropdownOption[taskIndex]=dropdownValue;
+    setSelectedTaskDropdownOption(updatedselectedTaskDropdownOption);
+
+    }
+    else{
+
+      let substituteMeetingTasks=meetingTasks.slice();
+      const meetingTask = {
+        task_name: "",
+        employee_name: "",
+        start_date: "1970-01-01",
+        end_date: "",
+        task_description: "",
+        priority: "",
+        meeting_id: "1",
+    }
+    substituteMeetingTasks[taskIndex]=meetingTask;
+    
+    setMeetingTasks(substituteMeetingTasks);
+    let updatedselectedTaskDropdownOption=selectedTaskDropdownOption.slice();
+    updatedselectedTaskDropdownOption[taskIndex]=dropdownValue.value;
+    setSelectedTaskDropdownOption(updatedselectedTaskDropdownOption);
+    }
+
+  }
+  
+  
 
   // Send the form data to the API using fetch or axios
   const handleSubmit = async (e) => {
@@ -300,17 +373,25 @@ const Meeting = (props) => {
       submitMeeting();
     }
 
-    for (const meetingTask of meetingTasks) {
+    
+
+    meetingTasks.forEach((meetingTask, index) => {
+      if(selectedTaskDropdownOption[index]=='other'){
       tasks_create(meetingTask)
         .then((res) => {
           meeting.meeting_tasks.push(res.data.task_id);
-        }).then(() => {
+        })
+        .then(() => {
           checkSubmitMeeting();
         })
         .catch((error) => {
-          console.error("Error creating task:", error);
+          console.error(`Error creating task at index ${index}:`, error);
         });
-    }
+      } else{
+        checkSubmitMeeting();
+      }
+    });
+
   };
 
 
@@ -348,9 +429,13 @@ const Meeting = (props) => {
       priority: "",
       meeting_id: "1",
     }
+
     let updatedMeetingTasks = meetingTasks.slice();
     updatedMeetingTasks.push(meetingTask);
     setMeetingTasks(updatedMeetingTasks);
+    let updatedselectedTaskDropdownOption= selectedTaskDropdownOption.slice();
+    updatedselectedTaskDropdownOption.push(taskDropdownOptions[0]);
+    setSelectedTaskDropdownOption(updatedselectedTaskDropdownOption);
   }
 
   const removeMeetingTask = (e) => {
@@ -764,7 +849,7 @@ const Meeting = (props) => {
                     </FormGroup>
                   </Row>
                   <Row>
-                    <Col style={{maxWidth: "5%"}}>
+                  <Col style={{maxWidth: "5%"}}>
                       {
                         meetingTasks.map(
                           (task) => (
@@ -779,10 +864,33 @@ const Meeting = (props) => {
                         )
                       }
                     </Col>
+                  <Col >
+                      {
+                        meetingTasks.map(
+                          (task,index) => (
+                            <Row className="form-task-row">
+                                <div>
+                                <Dropdown
+                                className="custom-dropdown" 
+                                 onChange={
+                                  (selectedValue) => {
+                                    const selectedIndex = taskDropdownOptions.findIndex(option => option === selectedValue.value);
+                                    OnTaskOptionChange(selectedValue, selectedIndex,index)
+                                  }}
+                                   options={taskDropdownOptions} 
+                                   value={selectedTaskDropdownOption[index]} 
+                                   placeholder="Select an option" />
+                                </div>
+                            </Row>
+                          )
+                        )
+                      }
+                    </Col>
+                    
                     <Col>
                       {
                         meetingTasks.map(
-                          (task) => (
+                          (task,index) => (
                             <Row className="form-task-row">
                               <FormGroup>
                                 <Input
@@ -793,6 +901,7 @@ const Meeting = (props) => {
                                   index={meetingTasks.indexOf(task)}
                                   value={task.task_name}
                                   onChange={handleMeetingTasksChange}
+                                  readOnly={selectedTaskDropdownOption[index]!='other'? true : false}
                                 />
                               </FormGroup>
                             </Row>
@@ -803,7 +912,7 @@ const Meeting = (props) => {
                     <Col>
                       {
                         meetingTasks.map(
-                          (task) => (
+                          (task,index) => (
                             <Row className="form-task-row">
                               <FormGroup>
 
@@ -814,6 +923,7 @@ const Meeting = (props) => {
                                   index={meetingTasks.indexOf(task)}
                                   value={task.end_date}
                                   onChange={handleMeetingTasksChange}
+                                  readOnly={selectedTaskDropdownOption[index]!='other'? true : false}
                                 />
                                 {
                                   meetingTasks.indexOf(task) === meetingTasks.length - 1 ?
@@ -835,7 +945,7 @@ const Meeting = (props) => {
                     <Col>
                       {
                         meetingTasks.map(
-                          (task) => (
+                          (task,index) => (
                             <Row className="form-task-row">
                               <FormGroup>
                                 <Input
@@ -846,6 +956,7 @@ const Meeting = (props) => {
                                   index={meetingTasks.indexOf(task)}
                                   value={task.employee_name}
                                   onChange={handleMeetingTasksChange}
+                                  readOnly={selectedTaskDropdownOption[index]!='other'? true : false}
                                 />
                               </FormGroup>
                             </Row>
@@ -856,7 +967,7 @@ const Meeting = (props) => {
                     <Col>
                       {
                         meetingTasks.map(
-                          (task) => (
+                          (task,index) => (
                             <Row className="form-task-row">
                               <FormGroup>
                                 <Input
@@ -867,6 +978,7 @@ const Meeting = (props) => {
                                   index={meetingTasks.indexOf(task)}
                                   value={task.priority}
                                   onChange={handleMeetingTasksChange}
+                                  readOnly={selectedTaskDropdownOption[index]!='other'? true : false}
                                 />
                               </FormGroup>
                             </Row>
@@ -877,7 +989,7 @@ const Meeting = (props) => {
                     <Col>
                       {
                         meetingTasks.map(
-                          (task) => (
+                          (task,index) => (
                             <Row className="form-task-row">
                               <FormGroup>
                                 <Input
@@ -888,6 +1000,7 @@ const Meeting = (props) => {
                                   index={meetingTasks.indexOf(task)}
                                   value={task.task_description}
                                   onChange={handleMeetingTasksChange}
+                                  readOnly={selectedTaskDropdownOption[index]!='other'? true : false}
                                 />
                               </FormGroup>
                             </Row>
